@@ -1,0 +1,83 @@
+name: MLOps End-to-End Pipeline
+
+on:
+  push:
+    branches:
+      - '**' # Se ejecuta en cualquier rama
+
+jobs:
+  # ==========================================
+  # FASE 1: TEST
+  # ==========================================
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Pruebas unitarias
+        run: pytest tests/
+
+  # ==========================================
+  # FASE 2: TRAIN (Solo si TEST pasa)
+  # ==========================================
+  train:
+    needs: test # Esto crea la dependencia con el job anterior
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Crear carpeta y Entrenar modelo
+        run: |
+          mkdir -p models
+          PYTHONPATH=. python src/train.py
+
+      - name: Guardar Modelos y Scalers como Artefactos
+        uses: actions/upload-artifact@v4
+        with:
+          name: modelos-entrenados
+          path: models/*.pkl
+          retention-days: 7
+
+  # ==========================================
+  # FASE 3: DEPLOY (Solo si TRAIN pasa Y es la rama MAIN)
+  # ==========================================
+  deploy:
+    needs: train
+    runs-on: ubuntu-latest
+    # Esta regla bloquea el despliegue en tu rama nueva
+    if: github.ref == 'refs/heads/main' 
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descargar modelos entrenados
+        uses: actions/download-artifact@v4
+        with:
+          name: modelos-entrenados
+          path: models/
+
+      - name: Desplegar a Producción
+        run: |
+          echo "Los siguientes modelos están listos para producción:"
+          ls -la models/
+          echo "Ejecutando script de despliegue a Cloud..."

@@ -1,0 +1,16 @@
+# Extracción de datos
+yfinance
+
+# Machine Learning tradicional
+scikit-learn
+
+# Persistencia de modelos y datos (Esencial para MLOps)
+joblib
+
+# Visualización de datos
+matplotlib
+
+# Herramientas para pruebas y datos
+pytest
+pandas==1.5.3
+numpy<2
