@@ -35,24 +35,23 @@ warnings.filterwarnings('ignore')
 # CONFIGURACIÓN — editar aquí tras correr escaneo_candidatos.py
 # ════════════════════════════════════════════════════════════════════
 FOOD_COMPANIES = [
-    # Tus 8 originales — siempre incluir
     "KO", "PEP", "GIS", "KHC", "HSY", "MDLZ", "CPB", "SJM",
-    # Añadir los que salgan válidos en escaneo_candidatos.py:
-    "CAG", "MKC", "HRL", "TSN", "POST", "LW", "INGR", "LANC",
+    "CAG", "MKC", "HRL", "POST", "LW", "INGR", "JJSF",
+    "TSN", "CALM", "MNST", "SMPL", "NOMD",
 ]
 
-# Usar mediana (recomendado) o media como benchmark del sector
-BENCHMARK      = 'median'   # 'median' o 'mean'
+# Benchmark: 'xlp' usa XLP_Return_21d (recomendado), 'median' o 'mean' usan el panel
+BENCHMARK      = 'xlp'      # xlp = mejor AUC demostrado (0.689 vs 0.511)
 
-# Período histórico — desde 2018 para tener más datos
-START_DATE     = "2018-01-01"
+# Período histórico — desde 2021 para tener más datos
+START_DATE     = "2021-01-01"
 END_DATE       = "2025-12-31"
 
 # Benchmark de mercado — se mantiene para calcular indmom (momentum del sector)
 # No se usa como benchmark del target (eso lo hace la mediana del panel)
 INDUSTRY_TICKER = "XLP"
 
-RAW_DIR  = "data/raw_food_v3/"
+RAW_DIR  = "../data/raw_food_v3/"
 CSV_PATH = os.path.join(RAW_DIR, "food_fundamentals_v3.csv")
 N_SPLITS = 5
 GAP      = 21
@@ -255,16 +254,17 @@ def main():
           f"({neg_folds} folds negativos)")
     print(f"  Clasificador AUC:  {np.mean(clf_aucs):.3f}")
 
-    # ── Guardar artefactos ───────────────────────────────────────────
-    joblib.dump(reg_model_last,  "model_reg_v3.pkl")
-    joblib.dump(reg_scaler_last, "scaler_reg_v3.pkl")
-    joblib.dump(reg_winsor_last, "winsor_reg_v3.pkl")
-    joblib.dump(clf_model_last,  "model_clf_v3.pkl")
-    joblib.dump(clf_scaler_last, "scaler_clf_v3.pkl")
-    joblib.dump(clf_winsor_last, "winsor_clf_v3.pkl")
+    # ── Guardar artefactos en models/v3/ ────────────────────────────
+    models_dir = "../models/v3"
+    os.makedirs(models_dir, exist_ok=True)
 
-    # Guardar también la lista de empresas y el benchmark usado
-    # para que predict_v3.py sepa exactamente con qué fue entrenado
+    joblib.dump(reg_model_last,  f"{models_dir}/model_reg_v3.pkl")
+    joblib.dump(reg_scaler_last, f"{models_dir}/scaler_reg_v3.pkl")
+    joblib.dump(reg_winsor_last, f"{models_dir}/winsor_reg_v3.pkl")
+    joblib.dump(clf_model_last,  f"{models_dir}/model_clf_v3.pkl")
+    joblib.dump(clf_scaler_last, f"{models_dir}/scaler_clf_v3.pkl")
+    joblib.dump(clf_winsor_last, f"{models_dir}/winsor_clf_v3.pkl")
+
     config = {
         'food_companies' : FOOD_COMPANIES,
         'benchmark'      : BENCHMARK,
@@ -273,9 +273,9 @@ def main():
         'n_features'     : X.shape[1],
         'feature_cols'   : list(X.columns),
     }
-    joblib.dump(config, "config_v3.pkl")
+    joblib.dump(config, f"{models_dir}/config_v3.pkl")
 
-    print("\n  Artefactos guardados (7 archivos):")
+    print(f"\n  Artefactos guardados en {models_dir}/:")
     for f in ["model_reg_v3", "scaler_reg_v3", "winsor_reg_v3",
               "model_clf_v3", "scaler_clf_v3", "winsor_clf_v3", "config_v3"]:
         print(f"    {f}.pkl")

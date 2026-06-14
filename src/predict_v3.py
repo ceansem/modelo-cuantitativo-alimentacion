@@ -86,13 +86,14 @@ def main():
     # ── 1. Cargar artefactos ─────────────────────────────────────────
     print("\n[1/4] Cargando artefactos...")
     try:
-        config      = joblib.load("config_v3.pkl")
-        reg_model   = joblib.load("model_reg_v3.pkl")
-        reg_scaler  = joblib.load("scaler_reg_v3.pkl")
-        reg_winsor  = joblib.load("winsor_reg_v3.pkl")
-        clf_model   = joblib.load("model_clf_v3.pkl")
-        clf_scaler  = joblib.load("scaler_clf_v3.pkl")
-        clf_winsor  = joblib.load("winsor_clf_v3.pkl")
+        models_dir = "../models/v3"
+        config      = joblib.load(f"{models_dir}/config_v3.pkl")
+        reg_model   = joblib.load(f"{models_dir}/model_reg_v3.pkl")
+        reg_scaler  = joblib.load(f"{models_dir}/scaler_reg_v3.pkl")
+        reg_winsor  = joblib.load(f"{models_dir}/winsor_reg_v3.pkl")
+        clf_model   = joblib.load(f"{models_dir}/model_clf_v3.pkl")
+        clf_scaler  = joblib.load(f"{models_dir}/scaler_clf_v3.pkl")
+        clf_winsor  = joblib.load(f"{models_dir}/winsor_clf_v3.pkl")
     except FileNotFoundError as e:
         print(f"  ERROR: {e}\n  Ejecuta train_v3.py primero.")
         return
@@ -176,7 +177,7 @@ def main():
     print(f"  del retorno de las {len(feature_rows)} empresas del panel.")
     print("  No constituye asesoramiento financiero.\n")
 
-    out = f"predicciones_v3_{hoy.strftime('%Y%m%d')}.csv"
+    out = f"../predicciones_v3_{hoy.strftime('%Y%m%d')}.csv"
     df_res.drop(columns=['Icono']).to_csv(out, index=False)
     print(f"  Exportado: {out}")
 

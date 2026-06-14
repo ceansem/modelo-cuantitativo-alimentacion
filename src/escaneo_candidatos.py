@@ -55,7 +55,8 @@ CANDIDATOS = {
 START = "2018-01-01"
 END   = "2025-12-31"
 MIN_FILAS      = 1000   # ~4 años de datos diarios
-MIN_TRIMESTRES = 8      # mínimo 2 años de fundamentales trimestrales
+MIN_ADVERTENCIA = 500   # mínimo aceptable
+MIN_TRIMESTRES = 4      # yfinance 1.4 devuelve máximo 4-5 trimestres
 
 print(f"\n{'Ticker':<8} {'Empresa':<28} {'Desde':<12} {'Filas':>6} {'Trimestres':>11}  Estado")
 print("─" * 78)
@@ -69,7 +70,7 @@ for ticker, nombre in CANDIDATOS.items():
         stock = yf.Ticker(ticker)
 
         # ── Precios históricos ───────────────────────────────────────
-        hist = stock.history(start=START, end=END, progress=False)
+        hist = yf.download(ticker, start=START, end=END, auto_adjust=True, progress=False, multi_level_index=False)
 
         if hist.empty:
             invalidos.append(ticker)

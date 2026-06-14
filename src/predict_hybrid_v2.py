@@ -29,13 +29,13 @@ warnings.filterwarnings('ignore')
 FOOD_COMPANIES     = ["KO", "PEP", "GIS", "KHC", "HSY", "MDLZ", "CPB", "SJM"]
 INDUSTRY_BENCHMARK = "XLP"
 
-REG_MODEL_PATH  = "model_food_2025_wf.pkl"
-REG_SCALER_PATH = "scaler_food_2025_wf.pkl"
-REG_WINSOR_PATH = "winsor_bounds_food_2025_wf.pkl"
+REG_MODEL_PATH  = "../models/v2/model_food_2025_wf.pkl"
+REG_SCALER_PATH = "../models/v2/scaler_food_2025_wf.pkl"
+REG_WINSOR_PATH = "../models/v2/winsor_bounds_food_2025_wf.pkl"
 
-CLF_MODEL_PATH  = "model_clf_v2_food_2025_wf.pkl"
-CLF_SCALER_PATH = "scaler_clf_v2_food_2025_wf.pkl"
-CLF_WINSOR_PATH = "winsor_bounds_clf_v2_food_2025_wf.pkl"
+CLF_MODEL_PATH  = "../models/v2/model_clf_v2_food_2025_wf.pkl"
+CLF_SCALER_PATH = "../models/v2/scaler_clf_v2_food_2025_wf.pkl"
+CLF_WINSOR_PATH = "../models/v2/winsor_bounds_clf_v2_food_2025_wf.pkl"
 
 FUNDAMENTAL_COLS = [
     'ROE', 'ROA', 'Gross_Margin', 'Current_Ratio', 'Quick_Ratio', 'D_E',
