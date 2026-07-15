@@ -1,128 +1,214 @@
-import joblib
-import pandas as pd
-import os
-import numpy as np
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import TimeSeriesSplit  # CAMBIO: Usamos validación temporal
-from data_obtained import MLDataFetcher 
-from preprocess import DataPreprocessor
+"""
+train_v4.py — Entrenamiento final v4
+====================================
+
+Entrena el modelo final con todos los datos disponibles hasta la fecha configurada.
+Este script es distinto del backtest:
+    - backtest_anual_rolling_v4.py valida históricamente la metodología;
+    - train_v4.py genera los modelos finales para predicción actual.
+
+Salida:
+    models/v4/final/model_reg_v4.pkl
+    models/v4/final/model_clf_v4.pkl
+    models/v4/final/scaler_v4.pkl
+    models/v4/final/winsor_bounds_v4.pkl
+    models/v4/final/config_v4.pkl
+"""
+
+from __future__ import annotations
+
+import json
 import warnings
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Tuple
 
-# Silenciamos cualquier advertencia residual a nivel global
-warnings.filterwarnings('ignore')
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
 
-def main():
-    # 1. Configuración de la prueba (Empresas de Alimentación)
-    food_companies = ["KO", "PEP", "GIS", "KHC", "HSY", "MDLZ", "CPB", "SJM"]
-    industry_benchmark = "XLP" 
-    
-    start_date = "2021-01-01" 
-    end_date = "2025-12-31" 
-    raw_data_dir = "data/raw_food/"
+from src.data_obtained import MLDataFetcherV2
+from src.preprocess import DataPreprocessorV4
 
-    print(f"Iniciando descarga de datos combinados (ML) para {len(food_companies)} empresas...")
-    
-    all_dataframes = []
-    
-    for ticker in food_companies:
-        fetcher = MLDataFetcher(
-            ticker=ticker, 
-            industry_ticker=industry_benchmark, 
-            start_date=start_date, 
-            end_date=end_date
-        )
-        df = fetcher.create_unified_dataset()
-        
-        if not df.empty:
-            df['Ticker'] = ticker 
-            all_dataframes.append(df)
-            print(f"[{ticker}] Datos unificados exitosamente. Tamaño: {df.shape}")
+warnings.filterwarnings("ignore")
 
-    if all_dataframes:
-        combined_df = pd.concat(all_dataframes)
-        os.makedirs(raw_data_dir, exist_ok=True)
-        file_path = os.path.join(raw_data_dir, "food_fundamentals_2024.csv")
-        combined_df.to_csv(file_path)
-        print(f"\nDatos consolidados guardados exitosamente en {file_path}")
-    else:
-        print("\nError Crítico: No se pudieron extraer datos de ninguna empresa.")
-        return
 
-    # 2. Preprocesamiento con Pandas y Scikit-Learn
-    print("\nCargando y procesando el archivo CSV...")
-    preprocessor = DataPreprocessor()
-    raw_df = preprocessor.load_data(raw_data_dir)
-    
-    # El preprocesador solo nos da las X y las y limpias (sin escalar)
-    X, y = preprocessor.create_pipeline(raw_df)
+ROOT_DIR = Path(__file__).resolve().parents[1]
+RAW_DIR = ROOT_DIR / "data" / "raw_food_v4"
+MODELS_DIR = ROOT_DIR / "models" / "v4" / "final"
+CSV_PATH = RAW_DIR / "food_fundamentals_v4.csv"
 
-    # 3. Configuración de Walk-Forward Validation (Validación en el Tiempo)
-    print("\nIniciando Walk-Forward Validation (5 Folds)...")
-    tscv = TimeSeriesSplit(n_splits=5, gap=21)  # GAP de 1 mes (21 días bursátiles) para evitar fuga de datos
-    
-    fold = 1
-    scores = []
-    importances_list = []
-    winsor_bounds_last = {}   # guardará los bounds del último fold para predict.py
+USE_CACHED_CSV = True
 
-    # Iteramos sobre cada ventana en el tiempo
-    for train_index, test_index in tscv.split(X):
-        # Aislamos el pasado (train) del futuro (test) ESTRICTAMENTE
-        X_train, X_test = X.iloc[train_index].copy(), X.iloc[test_index].copy()
-        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+FOOD_COMPANIES = ["KO", "PEP", "GIS", "KHC", "HSY", "MDLZ", "CPB", "SJM"]
 
-        # 4. Winsorización estricta por fold (Sin Fuga de Datos)
-        for col in X_train.columns:
-            lower_bound = X_train[col].quantile(0.01)
-            upper_bound = X_train[col].quantile(0.99)
-            X_train.loc[:, col] = np.clip(X_train[col], lower_bound, upper_bound)
-            X_test.loc[:, col] = np.clip(X_test[col], lower_bound, upper_bound)
-            winsor_bounds_last[col] = (lower_bound, upper_bound)  # sobreescribimos cada fold; al final queda el último
+INDUSTRY_TICKER = "XLP"
+BENCHMARK = "xlp"
 
-        # 5. Normalización Z-Score estricta por fold
-        scaler_model = StandardScaler()
-        X_train_scaled = scaler_model.fit_transform(X_train)
-        X_test_scaled = scaler_model.transform(X_test)
+BENCHMARK_LABELS = {
+    "xlp": "P_ganar_XLP",
+    "median": "P_ganar_mediana",
+    "mean": "P_ganar_media",
+}
 
-        # 6. Entrenamiento y Evaluación de este bloque temporal
-        model = RandomForestRegressor(n_estimators=300, random_state=42, n_jobs=-1, max_depth=5, min_samples_leaf=30, max_features='sqrt')  # Hiperparámetros ajustados para evitar sobreajuste
-        model.fit(X_train_scaled, y_train)
-        
-        score = model.score(X_test_scaled, y_test)
-        scores.append(score)
-        importances_list.append(model.feature_importances_)
-        
-        print(f"Fold {fold} | Entrenamiento: {len(X_train)} filas | Prueba: {len(X_test)} filas | R^2: {score:.4f}")
-        fold += 1
+DATA_START_DATE = "2020-01-01"
+DATA_END_DATE = "2026-02-15"
 
-    # 7. Resultados Finales y Extracción de Importancia
-    print("\n" + "="*50)
-    print(f"R^2 PROMEDIO DEL MODELO (Walk-Forward): {np.mean(scores):.4f}")
-    print("="*50)
+PRED_HORIZON_DAYS = 21
+FUNDAMENTAL_LAG_DAYS = 63
+MACRO_VAR_DAYS = 21
 
-    # Calculamos la importancia promedio de las variables a través de todos los años
-    avg_importances = np.mean(importances_list, axis=0)
-    
-    df_importancia = pd.DataFrame({
-        'Variable': X.columns,
-        'Importancia (%)': avg_importances * 100
-    })
-    df_importancia = df_importancia.sort_values(by='Importancia (%)', ascending=False).reset_index(drop=True)
-    
-    print("\nRANKING PROMEDIO DE IMPORTANCIA DE VARIABLES:")
-    for index, row in df_importancia.iterrows():
-        print(f"{index + 1}. {row['Variable']:<25} {row['Importancia (%)']:.2f}%")
+RANDOM_STATE = 42
 
-    # 8. Persistencia del modelo y del escalador (MLOps)
-    # Guardamos el modelo y el escalador del ÚLTIMO fold, ya que es el que ha 
-    # aprendido de toda la historia reciente y está listo para predecir el futuro.
-    joblib.dump(model, "model_food_2025_wf.pkl")
-    joblib.dump(scaler_model, "scaler_food_2025_wf.pkl")
-    joblib.dump(winsor_bounds_last, "winsor_bounds_food_2025_wf.pkl")
-    print("\nModelo, Scaler y Winsor Bounds del último fold guardados correctamente (.pkl).")
-    
-    print("\nProceso MLOps finalizado con éxito.")
+RF_REG_PARAMS = dict(
+    n_estimators=300,
+    max_depth=5,
+    min_samples_leaf=30,
+    max_features="sqrt",
+    random_state=RANDOM_STATE,
+    n_jobs=-1,
+)
+
+RF_CLF_PARAMS = dict(
+    n_estimators=300,
+    max_depth=5,
+    min_samples_leaf=30,
+    max_features="sqrt",
+    class_weight="balanced",
+    random_state=RANDOM_STATE,
+    n_jobs=-1,
+)
+
+
+def ensure_dirs() -> None:
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def winsorize_fit_transform(
+    X: pd.DataFrame,
+    q_low: float = 0.01,
+    q_high: float = 0.99,
+) -> Tuple[pd.DataFrame, Dict[str, Tuple[float, float]]]:
+    X_w = X.copy()
+    bounds: Dict[str, Tuple[float, float]] = {}
+    for col in X_w.columns:
+        lo = X_w[col].quantile(q_low)
+        hi = X_w[col].quantile(q_high)
+        if pd.isna(lo) or pd.isna(hi):
+            continue
+        X_w[col] = np.clip(X_w[col], lo, hi)
+        bounds[col] = (float(lo), float(hi))
+    return X_w, bounds
+
+
+def load_or_download_panel() -> pd.DataFrame:
+    ensure_dirs()
+
+    if USE_CACHED_CSV and CSV_PATH.exists():
+        print(f"CSV encontrado. Reutilizando: {CSV_PATH}")
+        df = pd.read_csv(CSV_PATH, index_col=0, parse_dates=True)
+        df.index = pd.to_datetime(df.index, errors="coerce")
+        return df
+
+    print("Descargando panel v4...")
+    all_dfs: List[pd.DataFrame] = []
+
+    for ticker in FOOD_COMPANIES:
+        try:
+            fetcher = MLDataFetcherV2(
+                ticker=ticker,
+                industry_ticker=INDUSTRY_TICKER,
+                start_date=DATA_START_DATE,
+                end_date=DATA_END_DATE,
+            )
+            df_ticker = fetcher.create_unified_dataset()
+            if df_ticker.empty:
+                print(f"  [{ticker}] Sin datos. Omitido.")
+                continue
+            df_ticker = df_ticker.copy()
+            df_ticker["Ticker"] = ticker
+            all_dfs.append(df_ticker)
+            print(f"  [{ticker}] OK — {len(df_ticker):,} filas")
+        except Exception as exc:
+            print(f"  [{ticker}] ERROR: {exc}")
+
+    if not all_dfs:
+        raise RuntimeError("No se pudo descargar ningún dato.")
+
+    df = pd.concat(all_dfs, axis=0)
+    df.index = pd.to_datetime(df.index, errors="coerce")
+    df = df.sort_values(["Ticker"], kind="stable").sort_index(kind="stable")
+    df.to_csv(CSV_PATH)
+    print(f"CSV guardado: {CSV_PATH} | filas: {len(df):,}")
+    return df
+
+
+def main() -> None:
+    ensure_dirs()
+    print("=" * 70)
+    print("TRAIN FINAL v4")
+    print("=" * 70)
+    print(f"Benchmark: {BENCHMARK}")
+    print(f"Empresas: {len(FOOD_COMPANIES)}")
+
+    raw_df = load_or_download_panel()
+
+    preprocessor = DataPreprocessorV4(
+        benchmark=BENCHMARK,
+        pred_horizon_days=PRED_HORIZON_DAYS,
+        fundamental_lag_days=FUNDAMENTAL_LAG_DAYS,
+        macro_var_days=MACRO_VAR_DAYS,
+    )
+    X, y_reg, y_class, meta, feature_cols = preprocessor.create_pipeline(raw_df, return_meta=True)
+
+    X_w, winsor_bounds = winsorize_fit_transform(X)
+    scaler = StandardScaler()
+    X_sc = scaler.fit_transform(X_w)
+
+    reg = RandomForestRegressor(**RF_REG_PARAMS)
+    clf = RandomForestClassifier(**RF_CLF_PARAMS)
+
+    print("\nEntrenando regresor final...")
+    reg.fit(X_sc, y_reg)
+
+    print("Entrenando clasificador final...")
+    clf.fit(X_sc, y_class)
+
+    config = {
+        "version": "v4",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "food_companies": FOOD_COMPANIES,
+        "industry_ticker": INDUSTRY_TICKER,
+        "benchmark": BENCHMARK,
+        "benchmark_labels": BENCHMARK_LABELS,
+        "data_start_date": DATA_START_DATE,
+        "data_end_date": DATA_END_DATE,
+        "pred_horizon_days": PRED_HORIZON_DAYS,
+        "fundamental_lag_days": FUNDAMENTAL_LAG_DAYS,
+        "macro_var_days": MACRO_VAR_DAYS,
+        "feature_cols": feature_cols,
+        "n_rows_train": len(X),
+        "n_features": len(feature_cols),
+        "rf_reg_params": RF_REG_PARAMS,
+        "rf_clf_params": RF_CLF_PARAMS,
+    }
+
+    joblib.dump(reg, MODELS_DIR / "model_reg_v4.pkl")
+    joblib.dump(clf, MODELS_DIR / "model_clf_v4.pkl")
+    joblib.dump(scaler, MODELS_DIR / "scaler_v4.pkl")
+    joblib.dump(winsor_bounds, MODELS_DIR / "winsor_bounds_v4.pkl")
+    joblib.dump(config, MODELS_DIR / "config_v4.pkl")
+
+    with open(MODELS_DIR / "metadata_v4.json", "w", encoding="utf-8") as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+
+    print("\nArtefactos guardados en:")
+    print(f"  {MODELS_DIR}")
+    print("\nNo constituye asesoramiento financiero.")
+
 
 if __name__ == "__main__":
     main()
