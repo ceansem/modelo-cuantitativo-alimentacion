@@ -50,7 +50,10 @@ jobs:
 
       - name: Entrenar modelo
         run: |
-          # Aseguramos que Python encuentre la carpeta src/
+          # 1. PARCHEO MLOPS EN CALIENTE: cambiamos 'xlp' por 'median' al vuelo
+          sed -i 's/BENCHMARK = "xlp"/BENCHMARK = "median"/g' src/train.py
+          
+          # 2. Aseguramos que Python encuentre la carpeta src/ y ejecutamos
           PYTHONPATH=. python src/train.py
 
       - name: Guardar Modelos, Scalers y Metadata como Artefactos
