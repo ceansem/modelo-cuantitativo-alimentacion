@@ -1,4 +1,3 @@
-```markdown
 # Modelo Cuantitativo de Renta Variable (Sector Alimentación / Quality-Growth)
 
 Este repositorio contiene un pipeline completo de Machine Learning (MLOps) diseñado para predecir retornos futuros y clasificar acciones basándose en la combinación de análisis fundamental (ratios TTM), datos de valoración, momentum de mercado y variables macroeconómicas.
@@ -14,17 +13,15 @@ El sistema utiliza modelos basados en árboles de decisión (**Random Forest** y
 *   **`src/predict_hybrid.py`**: Predictor final. Carga los artefactos generados por `train.py`, descarga los datos de las últimas sesiones y genera un ranking híbrido (Top/Bottom) de confianza para los próximos 21 días hábiles.
 *   **`test/`**: Directorio con la suite de pruebas unitarias para asegurar la integridad matemática y lógica del código (sin fugas temporales ni errores de formato).
 
----
 
 ## ⚙️ Requisitos e Instalación
 
 Es necesario disponer de **Python 3.11** (recomendado para replicar el entorno exacto). 
-```
 
 1. Clona el repositorio:
-   ```bash
-   git clone [https://github.com/tu-usuario/modelo-cuantitativo-alimentacion.git](https://github.com/tu-usuario/modelo-cuantitativo-alimentacion.git)
-   cd modelo-cuantitativo-alimentacion
+```bash
+git clone [https://github.com/tu-usuario/modelo-cuantitativo-alimentacion.git](https://github.com/tu-usuario/modelo-cuantitativo-alimentacion.git)
+cd modelo-cuantitativo-alimentacion
 
 ```
 
