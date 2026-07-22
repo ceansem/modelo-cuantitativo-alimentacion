@@ -19,6 +19,7 @@ El sistema utiliza modelos basados en árboles de decisión (**Random Forest** y
 ## ⚙️ Requisitos e Instalación
 
 Es necesario disponer de **Python 3.11** (recomendado para replicar el entorno exacto). 
+```
 
 1. Clona el repositorio:
    ```bash
