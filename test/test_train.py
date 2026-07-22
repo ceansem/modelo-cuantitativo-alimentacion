@@ -6,7 +6,6 @@ from unittest.mock import patch, MagicMock
 from src.train import winsorize_fit_transform, main, ensure_dirs
 
 def test_winsorize_fit_transform():
-    """Prueba que los valores extremos se recorten (clip) correctamente."""
     print("\nTesteando winsorize_fit_transform...")
     
     # Creamos un DataFrame con valores normales y valores extremos (outliers)

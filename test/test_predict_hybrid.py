@@ -11,7 +11,6 @@ from src.predict_hybrid import señal_hibrida, apply_pipeline, build_feature_row
 # ============================================================
 
 def test_senal_hibrida():
-    """Prueba la lógica de negocio para la generación de señales."""
     print("\nTesteando señal_hibrida...")
     
     total = 10

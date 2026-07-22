@@ -16,7 +16,6 @@ from src.backtest import (
 # ============================================================
 
 def test_sanitize_benchmark_label():
-    """Prueba el formateo seguro de nombres de índices para exportación."""
     print("\nTesteando sanitize_benchmark_label...")
     
     assert sanitize_benchmark_label("^STOXX50E") == "STOXX50E"
