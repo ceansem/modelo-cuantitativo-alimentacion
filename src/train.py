@@ -1,5 +1,5 @@
 """
-train_v4.py — Entrenamiento final v4
+train.py — Entrenamiento final
 ====================================
 
 Entrena el modelo final con todos los datos disponibles hasta la fecha configurada.
@@ -29,8 +29,8 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 
-from src.data_obtained import MLDataFetcherV2
-from src.preprocess import DataPreprocessorV4
+from src.data_obtained import MLDataFetcher
+from src.preprocess import DataPreprocessor
 
 warnings.filterwarnings("ignore")
 
@@ -113,12 +113,12 @@ def load_or_download_panel() -> pd.DataFrame:
         df.index = pd.to_datetime(df.index, errors="coerce")
         return df
 
-    print("Descargando panel v4...")
+    print("Descargando panel...")
     all_dfs: List[pd.DataFrame] = []
 
     for ticker in FOOD_COMPANIES:
         try:
-            fetcher = MLDataFetcherV2(
+            fetcher = MLDataFetcher(
                 ticker=ticker,
                 industry_ticker=INDUSTRY_TICKER,
                 start_date=DATA_START_DATE,
@@ -149,14 +149,14 @@ def load_or_download_panel() -> pd.DataFrame:
 def main() -> None:
     ensure_dirs()
     print("=" * 70)
-    print("TRAIN FINAL v4")
+    print("TRAIN FINAL")
     print("=" * 70)
     print(f"Benchmark: {BENCHMARK}")
     print(f"Empresas: {len(FOOD_COMPANIES)}")
 
     raw_df = load_or_download_panel()
 
-    preprocessor = DataPreprocessorV4(
+    preprocessor = DataPreprocessor(
         benchmark=BENCHMARK,
         pred_horizon_days=PRED_HORIZON_DAYS,
         fundamental_lag_days=FUNDAMENTAL_LAG_DAYS,

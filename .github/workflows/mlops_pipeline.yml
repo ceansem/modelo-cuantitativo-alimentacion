@@ -14,10 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configurar Python
+      - name: Configurar Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
           cache: 'pip'
 
       - name: Instalar dependencias
@@ -27,46 +27,51 @@ jobs:
           pip install pytest
 
       - name: Pruebas unitarias
-        run: pytest tests/
+        # Cambiamos a 'test/' para coincidir con tu carpeta local
+        run: pytest test/
 
   # ==========================================
-  # FASE 2: TRAIN (Solo si TEST pasa)
+  # FASE 2: TRAIN
   # ==========================================
   train:
-    needs: test # Esto crea la dependencia con el job anterior
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configurar Python
+      - name: Configurar Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
           cache: 'pip'
 
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
-      - name: Crear carpeta y Entrenar modelo
+      - name: Entrenar modelo
         run: |
-          mkdir -p models
+          # Aseguramos que Python encuentre la carpeta src/
           PYTHONPATH=. python src/train.py
 
-      - name: Guardar Modelos y Scalers como Artefactos
+      - name: Guardar Modelos, Scalers y Metadata como Artefactos
         uses: actions/upload-artifact@v4
         with:
           name: modelos-entrenados
-          path: models/*.pkl
+          # Usamos ** para que busque en todas las subcarpetas de models/ (ej. models/v4/final/)
+          path: |
+            models/**/*.pkl
+            models/**/*.json
           retention-days: 7
 
   # ==========================================
-  # FASE 3: DEPLOY (Solo si TRAIN pasa Y es la rama MAIN)
+  # FASE 3: DEPLOY (Desactivada temporalmente)
   # ==========================================
   deploy:
     needs: train
     runs-on: ubuntu-latest
-    # Esta regla bloquea el despliegue en tu rama nueva
-    if: github.ref == 'refs/heads/main' 
+    # Al poner 'false', GitHub Actions se saltará este paso automáticamente
+    # Cuando tengas un servidor/storage, cámbialo a: if: github.ref == 'refs/heads/main'
+    if: false 
     steps:
       - uses: actions/checkout@v4
 
@@ -76,8 +81,7 @@ jobs:
           name: modelos-entrenados
           path: models/
 
-      - name: Desplegar a Producción
+      - name: Desplegar a Producción (Placeholder)
         run: |
-          echo "Los siguientes modelos están listos para producción:"
-          ls -la models/
-          echo "Ejecutando script de despliegue a Cloud..."
+          echo "Despliegue desactivado temporalmente."
+          echo "A la espera de definir el destino de almacenamiento (S3, Hugging Face, BD, etc)."

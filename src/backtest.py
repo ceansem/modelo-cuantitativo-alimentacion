@@ -54,7 +54,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.base import clone
 
-from data_obtained import MLDataFetcher
+from src.data_obtained import MLDataFetcher
 
 
 warnings.filterwarnings("ignore")

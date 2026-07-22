@@ -1,5 +1,5 @@
 """
-predict_hybrid_v4.py — Predictor híbrido final v4
+predict_hybrid.py — Predictor híbrido final
 =================================================
 
 Requiere haber ejecutado primero:
